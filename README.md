@@ -1,3 +1,3 @@
 # Cuantum-Qomputing
 
-### Personal Diary entries for team memebers in markdown files.
+### Personal Diary entries for team members in markdown files.
