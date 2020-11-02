@@ -15,7 +15,7 @@ random.seed(time.monotonic())
 backend = Aer.get_backend('qasm_simulator')
 
 # Length of input
-n = 2
+n = 4
 
 # Initialise input and output registers
 input = QuantumRegister(n, "input")
@@ -47,5 +47,3 @@ for seq in itertools.product(["0", "1"], repeat=n):
     # Perform measurement
     circ.measure(output, result)
     print(f"{seq} - {execute(circ, backend).result().get_counts(circ)}")
-
-    # print(circ.draw())

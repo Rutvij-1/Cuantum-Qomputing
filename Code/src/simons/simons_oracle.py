@@ -31,7 +31,7 @@ def simons_oracle(circuit: QuantumCircuit,
 
     # Create 2-1 mapping
     for i in range(n):
-        circuit.cx(input[msb], output[i])
+        circuit.ccx(input[msb], secret[i], output[i])
 
     circuit.barrier()
 
