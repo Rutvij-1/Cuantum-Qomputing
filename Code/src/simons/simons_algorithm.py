@@ -1,4 +1,5 @@
-import itertools
+import json
+import sys
 
 from qiskit import (Aer, ClassicalRegister,
                     QuantumCircuit, QuantumRegister,
@@ -12,7 +13,26 @@ from simons_oracle import simons_oracle
 backend = Aer.get_backend('qasm_simulator')
 
 # Length of input
-n = 4
+n = None
+try:
+    n = int(sys.argv[1])
+except IndexError:
+    n = 4
+except ValueError:
+    print("Invalid size")
+    sys.exit(1)
+
+# Secret input (optional)
+secret_input = None
+try:
+    secret_input = sys.argv[2]
+    secret_input = [int(bit) for bit in secret_input]
+    if len(secret_input) != n:
+        print("Length of secret string and size of input should be the same")
+        exit(1)
+except IndexError:
+    pass
+
 
 # Initialise input, output and secret registers
 input = QuantumRegister(n, "input")
@@ -20,21 +40,56 @@ output = QuantumRegister(n, "output")
 secret = QuantumRegister(n, "secret")
 result = ClassicalRegister(n)
 
-(oracle, secret_input) = simons_oracle(n)
+(oracle, secret_input) = simons_oracle(n, secret_input)
 print(f"Secret string - {''.join([str(bit) for bit in secret_input])}")
 
-# Test Oracle
-for seq in itertools.product(["0", "1"], repeat=n):
-    # Initialize circuit
-    circuit = QuantumCircuit(input, output, secret, result)
+# Initialize circuit
+circuit = QuantumCircuit(input, output, secret, result)
 
-    # Inititialise input qubits
-    desired_vector = [0 for i in range(2**n)]
-    desired_vector[int("".join(seq), 2)] = 1
-    circuit.initialize(desired_vector, input)
+# Actual circuit
+circuit.h(input)
+circuit.append(oracle, [*input, *output, *secret])
+circuit.h(input)
 
-    circuit.append(oracle, [*input, *output, *secret])
+# Perform measurement
+circuit.measure(input, result)
 
-    # Perform measurement
-    circuit.measure(output, result)
-    print(f"{seq} - {execute(circuit, backend).result().get_counts(circuit)}")
+# print(circuit.draw())
+
+# Take the top results and create a matrix out of it to solve the equations
+res = execute(circuit, backend).result().get_counts()
+res = sorted(res, key=lambda k: res[k])[:2**(n-1)]
+
+print(res)
+
+# Convert to proper integer matrix
+mat = [[int(bit) for bit in bit_string] for bit_string in res]
+for row in mat:
+    row.reverse()
+
+
+# Perform Gaussian Elimination
+x, y = len(mat), n
+cur_row, cur_col = 0, 0
+while cur_row < x and cur_col < y:
+    if mat[cur_row][cur_col] == 0:
+        non_zero_row = -1
+        for j in range(cur_row+1, x):
+            if mat[j][cur_col] == 1:
+                non_zero_row = j
+                break
+        if non_zero_row == -1:
+            cur_col += 1
+            continue
+        else:
+            mat[cur_col], mat[non_zero_row] = mat[non_zero_row], mat[cur_row]
+    for j in range(cur_row+1, x):
+        if mat[j][cur_col] == 1:
+            for k in range(y):
+                mat[j][k] = mat[j][k] ^ mat[cur_row][k]
+
+    cur_row += 1
+
+mat = list(filter(lambda row: row.count(0) < y, mat))
+print(mat)
+# print(json.dumps(res.get_counts(circuit), indent=4))

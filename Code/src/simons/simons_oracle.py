@@ -1,14 +1,17 @@
+import itertools
 import random
 import time
 from typing import List, Tuple
 
-from qiskit import QuantumCircuit, QuantumRegister
+from qiskit import (Aer, ClassicalRegister, QuantumCircuit, QuantumRegister,
+                    execute)
 from qiskit.circuit import Gate
 
 random.seed(time.monotonic())
 
 
-def simons_oracle(size: int) -> Tuple[Gate, List[int]]:
+def simons_oracle(size: int, secret_input: List[int] = None) -> Tuple[Gate, List[int]]:
+    """ Returns a quantum gate which acts as an Oracle for Simon's Algorithm """
     # Register holding the secret string
     secret = QuantumRegister(size, "secret")
 
@@ -20,9 +23,10 @@ def simons_oracle(size: int) -> Tuple[Gate, List[int]]:
     oracle = QuantumCircuit(input, output, secret)
 
     # Generate random secret string
-    secret_input = [0 for i in range(size)]
-    while secret_input.count(0) == size:
-        secret_input = [random.choice([0, 1]) for i in range(size)]
+    if not secret_input:
+        secret_input = [0 for i in range(size)]
+        while secret_input.count(0) == size:
+            secret_input = [random.choice([0, 1]) for i in range(size)]
 
     # Encode it in the quantum register
     for i in range(size):
