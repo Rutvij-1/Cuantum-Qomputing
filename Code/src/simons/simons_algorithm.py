@@ -54,19 +54,16 @@ circuit.h(input)
 # Perform measurement
 circuit.measure(input, result)
 
-# print(circuit.draw())
+print(circuit.draw())
 
 # Take the top results and create a matrix out of it to solve the equations
 res = execute(circuit, backend).result().get_counts()
 res = sorted(res, key=lambda k: res[k])[:2**(n-1)]
 
-print(res)
-
 # Convert to proper integer matrix
 mat = [[int(bit) for bit in bit_string] for bit_string in res]
 for row in mat:
     row.reverse()
-
 
 # Perform Gaussian Elimination
 x, y = len(mat), n
@@ -91,5 +88,25 @@ while cur_row < x and cur_col < y:
     cur_row += 1
 
 mat = list(filter(lambda row: row.count(0) < y, mat))
-print(mat)
-# print(json.dumps(res.get_counts(circuit), indent=4))
+
+# Solve the reduced matrix
+sol = [-1 for i in range(n)]
+for i in range(n-1):
+    if not mat[i][i]:
+        sol[i] = 1
+        for j in range(i+1, n):
+            sol[j] = 0
+        break
+
+if sol.count(-1) == n:
+    sol[-1] = 1
+
+start = sol.index(1)-1
+for i in range(start, -1, -1):
+    cnt = 0
+    for j in range(n):
+        if sol[j] == 1 and mat[i][j] == 1:
+            cnt += 1
+    sol[i] = cnt % 2
+
+print(f'Calculated Secret String: {"".join([str(bit) for bit in sol])}')
