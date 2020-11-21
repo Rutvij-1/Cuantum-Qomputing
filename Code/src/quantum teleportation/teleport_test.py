@@ -4,7 +4,7 @@ from qiskit.visualization import plot_histogram, plot_bloch_multivector
 from qiskit.extensions import Initialize
 from qiskit_textbook.tools import random_state, array_to_latex
 from matplotlib import *
-import algo
+import teleport_algo
 
 
 # Initialise backend.
@@ -24,7 +24,7 @@ circuit.append(init_gate, [inp])
 circuit.barrier()
 
 # Perform teleportation.
-algo.quantum_teleport(circuit, inp, out)
+teleport_algo.quantum_teleport(circuit, inp, out)
 
 # Execute simulation and display result.
 job = execute(circuit, backend)
