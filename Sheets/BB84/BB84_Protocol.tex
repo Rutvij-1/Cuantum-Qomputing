@@ -1,0 +1,213 @@
+\documentclass[a4paper]{article}
+\usepackage[english]{babel}
+\usepackage[utf8x]{inputenc}
+% package for including graphics with figure-environment
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{qtree}
+% colors for hyperlinks
+% colored borders (false) colored text (true)
+\hypersetup{colorlinks=true,citecolor=black,filecolor=black,linkcolor=black,urlcolor=black}
+
+% package for bibliography
+\usepackage[authoryear,round]{natbib}
+% package for header
+\usepackage[automark,headsepline]{scrlayer-scrpage}
+\pagestyle{scrheadings}
+\ihead[]{BB84 Protocol}
+\cfoot[]{\pagemark} 
+
+\begin{document}
+	\title{
+
+	\vspace{1cm}
+	\Huge BB84 Protocol
+	}
+	
+	\vspace{1cm}
+	
+	% if you are the only author, you might use the following
+	% \author{Name of student}	
+	
+	% Insert here your name and correct mail address
+	\author{\Large {Sriram Devata} \Large \\ 2019113007
+	\vspace{0.5cm}}
+	
+	% name of the course and module
+	\date{
+	\large Algorithm Analysis And Design \\ 
+	\vspace{1cm}
+	}
+
+	\maketitle
+	\setlength{\parindent}{0pt}
+
+\vspace{8cm}
+\begin{abstract}
+\begin{center}
+This document gives an overview of the BB84 protocol for the implementation of Quantum Key Distribution(QKD) and the relevant principles needed to understand it. 
+\end{center}
+\end{abstract}
+	\newpage
+	\tableofcontents
+	\newpage
+	
+\section{Introduction} % (fold)
+\label{sec:introduction}
+All cryptography algorithms depend on secure sharing of keys. Though symmetrical cryptography algorithms are faster over asymmetrical cryptography algorithms, the risk of the shared key being intercepted makes them an inferior choice to an asymmetrical algorithm. 
+\\ \\
+When two parties (for simplicity, assume these parties to be Alice and Bob) are trying to establish communication by sharing keys to encrypt future information exchange, there's a risk of an eavesdropper (for simplicity, assume the eavesdropper is called Eve) intercepting the communication and figuring out the key that Alice and Bob decide to use. Besides having no point of encoding and decoding the information, Alice and Bob are not aware if their key has been compromised and would have the false belief that they have established a secure line of communication.
+\\ \\
+Using the BB84 protocol, Alice and Bob will know if Eve is eavesdropping and will not use the compromised key for further communication.
+% section introduction (end)
+
+\section{Background} % (fold)
+\label{sec:background}
+
+\subsection{Qubits} % (fold)
+\label{sub:qubits}
+
+In any computational devices, a building block is a two-state system (0, 1). In quantum mechanics, any system can exist in a \textit{superposition} of possible states. A qubit is a 2-state quantum system. It can exist in either of the possible states, or in a superposition of the two states. In general, the state of a qubit can be described as:
+\begin{gather*}
+    |\psi\rangle = \alpha|0\rangle + \beta|1\rangle\text{, with }\alpha, \beta \in \mathbb{C} \text{ and }|\alpha|^2 + |\beta|^2 = 1
+\end{gather*}
+
+\subsection{Measurement of a Qubit} % (fold)
+\label{sub:measurement of a qubit}
+
+The superposition $|\psi\rangle = \alpha|0\rangle + \beta|1\rangle$ is the \textit{private} information of a qubit. In order for us to know the state of the qubit, we have to make a measurement. When we make a measurement, we end up with one bit of information - if the qubit collapsed to the state $|0\rangle$ or $|1\rangle$.  It collapses to the state $|0\rangle$ with probability $|\alpha|^2$ and collapses to the state $|1\rangle$ with probability $|\beta|^2$.
+\\ \\
+Once the qubit collapses to a state after we make a measurement, the superposition of the qubit is lost and it now exists in the collapsed state. This means that it is not possible to find the values $|\alpha|^2$ and $|\beta|^2$ by making multiple measurements on a qubit to get a probability distribution.
+\\ \\
+A qubit can be visualized as a vector on a plane. The state of any qubit can be expressed as a linear combination of two orthogonal states. Two standard basis sets are the Z-basis states \{$|0\rangle$, $|1\rangle$\} and the X-basis states\{$|-\rangle$, $|+\rangle$\}.
+\\ \\
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+
+\draw[thick,<->] (-3,0) -- node[right=85pt] {$|0\rangle$} (3,0);
+\draw[thick,<->] (0,-3) -- node[above=85pt] {$|1\rangle$} (0,3);
+\draw[thick,blue,<->] (-2.12,-2.12) -- node[right=80pt, above=62pt] {$|+\rangle = \frac{|1\rangle+|0\rangle}{\sqrt{2}}$} (2.12,2.12);
+\draw[thick,blue,<->] (-2.12,2.12) -- node[left=80pt, above=62pt] {$|-\rangle = \frac{|1\rangle-|0\rangle}{\sqrt{2}}$} (2.12,-2.12);
+
+\end{tikzpicture}
+\caption{The Standard(Z) basis and the \textcolor{blue}{Signed(X) basis}}
+\end{figure}
+
+In general, we can choose any two orthogonal states and express the state of a qubit as a linear combination of these two states. 
+
+\subsection{Measurements In Different Bases} % (fold)
+\label{sub:measurement in different bases}
+
+A central component of the BB84 protocol is the collapse of the qubit when it is measured in a basis different from the basis it was encoded in. For example, if the bit 0 was encoded onto a qubit in the Z basis and is measured in the X basis, the result of the measurement would be 0 or 1 with equal probability.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+
+\draw[thick,<->] (0,0) -- node[right=45pt] {$|0\rangle$ (0 in Z-basis)} (3,0);
+\draw[thick,blue,<->] (-2.12,-2.12) -- node[right=90pt, above=62pt] {$|+\rangle$ (0 in X-basis)} (2.12,2.12);
+\draw[thick,blue,<->] (-2.12,2.12) -- node[left=90pt, above=62pt] {$|-\rangle$ (1 in X-basis)} (2.12,-2.12);
+\draw[thick, densely dotted,red] (2.5,0) -- node[] {50\%} (1.3,1.3);
+\draw[thick, densely dotted,red] (2.5,0) -- node[] {50\%}(1.3,-1.3);
+
+\end{tikzpicture}
+\caption{Measuring Z-basis 0 in the X-basis}
+\end{figure}
+
+\subsection{Quantum Communication Channel} % (fold)
+\label{sub:quantum communication channel}
+Classical communication channels can transmit classical information. Bits can be encoded as high or low voltages. This cannot be used sending and receiving qubits. To transmit quantum information, BB84 utilizes a separate Quantum communication channel to send and receive the states of qubits. The practical implementation of such a communication channel can be a fibre-optic cable that conserves the polarisation of photons. The state of a qubit can be encoded in the polarization of a photon. We can map the possible polarization states of a photon to the vector representation of a qubit.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}
+
+\draw[thick,->] (0,0) -- node[right=50pt] {\shortstack{$\text{0 in Z-basis}\\0^\circ$}} (3,0);
+\draw[thick,->] (0,0) -- node[above=50pt] {\shortstack{$\text{1 in Z-basis}\\90^\circ$}} (0,3);
+\draw[thick,blue,->] (0,0) -- node[right=60pt, above=30pt] {\shortstack{$\text{0 in X-basis}\\45^\circ$}} (2.12,2.12);
+\draw[thick,blue,->] (0,0) -- node[left=55pt, above=30pt] {\shortstack{$\text{1 in X-basis}\\135^\circ$}} (-2.12,2.12);
+
+\end{tikzpicture}
+\caption{Mapping the Polarization of a Photon to Qubit states}
+\end{figure}
+
+In this particular quantum communication channel, the bits encoded in different bases and the resulting qubits can be shown as $\nwarrow, \uparrow, \nearrow \text{and} \rightarrow$. 
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{| c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c | c |}
+    \hline
+     Bit to encode & \multicolumn{8}{c|}{0} & \multicolumn{8}{c|}{1} \\
+     \hline
+     Encoding Basis & \multicolumn{4}{c|}{Z} & \multicolumn{4}{c|}{X} & \multicolumn{4}{c|}{Z} & \multicolumn{4}{c|}{X} \\
+     \hline
+     Photon Polarization & \multicolumn{4}{c|}{$\rightarrow$} & \multicolumn{4}{c|}{$\nearrow$} & \multicolumn{4}{c|}{$\uparrow$} & \multicolumn{4}{c|}{$\nwarrow$} \\
+     \hline
+     Measurement Basis & \multicolumn{2}{c|}{Z} & \multicolumn{2}{c|}{X} & \multicolumn{2}{c|}{Z} & \multicolumn{2}{c|}{X} & \multicolumn{2}{c|}{Z} & \multicolumn{2}{c|}{X} & \multicolumn{2}{c|}{Z} & \multicolumn{2}{c|}{X} \\
+     \hline
+     Measured Bit & \multicolumn{2}{c|}{0} & 0 & 1 & 0 & 1 & \multicolumn{2}{c|}{0} & \multicolumn{2}{c|}{1} & 0 & 1 & 0 & 1 & \multicolumn{2}{c|}{1} \\
+     \hline
+     
+     
+     \hline
+    \end{tabular}
+    \caption{Qubits when encoded and measured in different bases}
+    \label{tab:qubit measurements}
+\end{table}
+
+\section{Overview of the Procotol} % (fold)
+
+The protocol initially assumes that there are two channels(quantum and classical) of communication available to Alice and Bob, and Eve is able to intercept information in both the channels. Alice chooses a random string of bits, and decides to encode each of these bits as a qubit, in either the Z-basis or X-basis at random. She keeps track of the initial bit string and the set of bases she chose to encode each bit. She sends the resulting qubits over to Bob through the quantum channel. \\
+
+As Bob receives the qubits, he measures each of the qubit in either the Z-basis or X-basis at random. He keeps track of the bits he measures and the bases he chose to measure each qubit. Bob now sends the set of bases he chose to measure each qubit and sends it to Alice. Alice responds to this by telling Bob the qubits for which Bob chose the same bases to measure in. Alice and Bob discard the bits where they both chose different bases to encode and measure. \\
+
+Alice and Bob take a small subset of the bits and compare them. Assuming that there is proper noise correction and there is no measurement errors, if Eve didn't eavesdrop, Alice and Bob would end up with the same bits. They discard this subset of bits, and use the rest of the bits to form a secret key for further communication. \\
+
+If the small subset of bits do not agree with each other, it would indicate that an eavesdropper, Eve, has intercepted the message, and the communication isn't secure. This is because if Eve wants to figure out the key, she would have to make measurements on the qubits sent by Alice in either of the bases chosen at random. According to the no cloning theorem, she can't make a replica of Alice's qubit to forward to Bob and make a measurement on her copy of the qubit. She either has to send the qubit she has measured, or guess the basis and send a new encoded qubit to Bob. 
+
+\section{Simulation Code} % (fold)
+An implementation of the BB84 protocol in Qiskit can be found as an \href{https://github.com/ishaanshah/Cuantum-Qomputing/tree/master/Code/src/BB84}{interactive example here}.
+
+\section{Analysis}
+
+For each bit that Alice encodes, the following flowchart illustrates the bit that Bob will measure if Eve doesn't intercept the qubit, and the bit that Eve measures if Eve intercepts the qubit.
+
+\vspace{1\baselineskip}
+
+\Tree [.{Alice encodes $bit \in \{0,1\}$ in basis $b \in \{X, Z\}$} 
+        [.{Eve intercepts qubit} [.{Eve measures \\ qubit using basis $b$} {Eve reads $bit$} ]
+        [.{Eve measures \\ qubit using basis $b'$} {Eve reads \\ $bit$} {Eve reads \\ $bit'$} ] ] 
+        [.{Bob receives qubit} [.{Bob measures \\ qubit using basis $b$} {Bob reads \\ $bit$} ] [.{Bob measures \\ qubit using basis $b'$} {Bob reads \\ $bit$} {Bob reads \\ $bit'$}  ] ] ]
+
+\vspace{1\baselineskip}
+
+Since both Eve and Bob choose the basis to measure in randomly, there is a $50\%$ chance that they choose the right basis. If they choose the wrong basis, there is a $50\%$ chance that they measure the correct bit. In the BB84 protocol implementation attached with this document, Eve forwards the qubit that she already made the measurement on to Bob. This means that in the case when Eve chose the wrong basis and the qubit collapsed to $bit'$, Bob measures $bit$ and $bit'$ with different probabilities.
+
+\Tree [.{Alice encodes $bit \in \{0,1\}$ in basis $b \in \{X, Z\}$} 
+        [.{Eve intercepts qubit} [.{$50\%$\\Eve measures \\ qubit using basis $b$} 
+        [.{Eve reads $bit$} {$75\%$\\Bob reads\\$bit$} {$25\%$\\Bob reads\\$bit'$} ] ]
+        [.{$50\%$\\Eve measures \\ qubit using basis $b'$} {$50\%$\\Eve reads\\$bit$ \\ \vdots}
+        {$50\%$ \\ Eve reads \\ $bit'$ \\ \vdots} ] ] 
+        [.{Bob receives qubit} [.{$50\%$\\Bob measures \\ qubit using basis $b$} {Bob reads \\ $bit$} ] [.{$50\%$\\Bob measures \\ qubit using basis $b'$} {$50\%$ \\ Bob reads \\ $bit$} {$50\%$ \\ Bob reads \\ $bit'$}  ] ] ]
+
+\vspace{1\baselineskip}
+
+In the case where Eve intercepts the qubit and measures using the basis $b'$,
+
+\vspace{1\baselineskip}
+
+\Tree [.{\vdots\\$50\%$\\Eve measures\\qubit using basis $b'$}
+        [.{$50\%$\\Eve reads\\$bit$} 
+        {$75\%$ \\ Bob reads \\ $bit$} {$25\%$ \\ Bob reads \\ $bit'$} ]
+        [.{$50\%$ \\ Eve reads \\ $bit'$} 
+        {$25\%$ \\ Bob reads \\ $bit$} {$75\%$ \\ Bob reads \\ $bit'$} ] ] 
+
+\vspace{1\baselineskip}
+
+Such an analysis will help us to choose optimal initial bit string length and the subset of the bit string to choose, to bring the number false negatives of an eavesdropper within the error threshold.
+
+\end{document}
