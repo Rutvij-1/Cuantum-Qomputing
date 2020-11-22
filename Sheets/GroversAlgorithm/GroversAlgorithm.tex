@@ -1,4 +1,4 @@
-\documentclass[13pt]{article}
+\documentclass[a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage{tikz}
 \usetikzlibrary{quantikz}
@@ -36,12 +36,44 @@
         \end{tcbclipinterior}
     }
 }
-
-\title{Grover's Algorithm Tutorial/Experimentation}
-\author{Rahul Goel}
-\date{November 2020}
-
 \begin{document}
+	\title{
+
+	\vspace{1cm}
+	\Huge Grover's Algorithm
+	}
+
+	\vspace{1cm}
+
+	% if you are the only author, you might use the following
+	% \author{Name of student}
+
+	% Insert here your name and correct mail address
+	\author{\Large {Rahul Goel} \Large \\  \ \ 2019111034
+	\date{November 2020}
+	\vspace{0.5cm}}
+
+	% name of the course and module
+	\date{
+	\large Algorithm Analysis And Design \\
+	\vspace{1cm}
+	}
+
+	\maketitle
+	\setlength{\parindent}{0pt}
+
+\vspace{8cm}
+\begin{abstract}
+\begin{center}
+\normalsize
+This document can be used as an introductory tutorial to Grover's Algorithm. It also includes certain peculiar observations that help to deepen the understanding about the differences between Quantum Computing and Classical Computing.
+\end{center}
+\end{abstract}
+	\newpage
+	\tableofcontents
+	\newpage
+
+
 
 \maketitle
 
@@ -377,6 +409,9 @@ So exceeding one query does not make much difference, but when we do this a few 
 \subsection{Assumption about the given black box}
 It is assumed that a quantum circuit has already been implemented that identifies the answer that we use as a black box. Well, if such a black box has been implemented, the maker of the black box would already know about the desired state.\\
 I think that maybe in future a situation may arise when the implemented black box is provided by nature and the algorithm may be used to find the desirable state.\\
-But nevertheless, this amazing algorithm does given an idea about the power of Quantum Computing.
+
+\section{Conclusion}
+
+Regardless of the black-box property mentioned above, this amazing algorithm does give an idea about the power of Quantum Computing. It gives a quadratic speed up in searching which can be used in database searching. The quadratic speed up can be used to solve some NP-Complete Problems by doing exhaustive searching over the set of all possible solutions (though not for large $N$ as exponential term still dominates).
 
 \end{document}.
