@@ -33,6 +33,6 @@ outputstate = result.get_statevector(circuit, decimals=4)
 array_to_latex(psi, pretext="|output\\rangle =")
 plot_bloch_multivector(outputstate)
 
-circuit.draw()
+print(circuit.draw())
 
 pyplot.show()
