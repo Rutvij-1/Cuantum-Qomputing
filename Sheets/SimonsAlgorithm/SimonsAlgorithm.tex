@@ -1,0 +1,382 @@
+\documentclass[13pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{tikz}
+\usepackage[braket, qm]{qcircuit}
+\usepackage{physics}
+\usepackage{pgfplots}
+\usepgfplotslibrary{units}
+\usetikzlibrary{patterns}
+\usepackage{siunitx}
+\usetikzlibrary{angles, quotes}
+\usepackage{amssymb}
+\usetikzlibrary{angles, arrows.meta, quotes}
+\pgfplotsset{compat=1.17}
+
+\usepackage{minted}
+\usepackage[most]{tcolorbox}
+\definecolor{lightgreen}{rgb}{0.56, 0.93, 0.56}
+\definecolor{moonstoneblue}{rgb}{0.45, 0.66, 0.76}
+
+\newtcblisting{myminted}{%
+    listing engine=minted,
+    minted language=c,
+    listing only,
+    breakable,
+    enhanced,
+    minted options = {
+        linenos,
+        breaklines=true,
+        breakbefore=.,
+        fontsize=\footnotesize,
+        numbersep=2mm
+    },
+    overlay={%
+        \begin{tcbclipinterior}
+            \fill[gray!25] (frame.south west) rectangle ([xshift=4mm]frame.north west);
+        \end{tcbclipinterior}
+    }
+}
+
+\title{Simons's Algorithm Tutorial}
+\author{Ishaan Shah}
+\date{November 2020}
+
+\begin{document}
+
+\maketitle
+
+\section{The Problem}
+\indent Given a function (implemented as a black box) $f: \{0, 1\}^n \rightarrow \{0, 1\}^n$, promised to satisfy the property that, for some non zero binary string $s \in \{0, 1\}^n$
+$$f(x) = f(y) \Leftrightarrow x = y\ \text{or}\ x = y \oplus s$$
+Find the secret string $s$ in least possible queries. It is important to note that the function $f(x)$ given to us is in the form of a black box which means we cannot extract the bit string by looking at the circuit inside.
+
+For example consider the following truth table for $n = 2$ and $s=10$
+\begin{center}
+    \begin{tabular}{|c|c|}
+        \hline
+        x & $f(x)$ \\
+        \hline
+        00 & 10 \\
+        01 & 01 \\
+        10 & 10 \\
+        11 & 01 \\
+        \hline
+    \end{tabular}
+\end{center}
+
+
+\section{Algorithm}
+\subsection{The classical way}
+\indent The classical algorithm is pretty straightforward. We find the output for $0^n$ and store it. Then we find outputs of successive binary strings until we find the output we got for $0^n$. The input for which this is true will be the secret bit string. We can easily see that the time complexity for this is $\mathcal{O}(2^n)$ and space complexity is $\mathcal{O}(1)$.
+
+\subsection{The quantum way}
+Before we begin to understand how Simon's algorithm works, we have to look at a smaller sub-algorithm namely the \textbf{Fourier Sampling}.
+
+\subsubsection*{Fourier Sampling}
+Fourier sampling is the process of applying $n$ Hadamard Gates to a system of $n$ qubits and measuring the result.
+
+If the input to the circuit is denoted by $\ket{\psi}$ and then the output $\ket{\psi'}$ is given by
+$$\ket{\psi'} = \sum_{y \in \{0, 1\}^n}\frac{(-1)^{y\cdot\psi}}{2^{n/2}}\ket{y}$$
+
+Now that we know how Fourier sampling works lets move on to the actual algorithm. The actual algorithm consists of three steps
+
+\subsubsection{Step 1 - Superposition}
+In the first step, we create an equal superposition of all the possible bit strings of length $n$. This can easily be done by initialising $n$ qubits to $0$ and  passing them through $n$ Hadamard gates. So now the state of our $n$ qubits will be given by
+$$ \ket{\psi} = \sum_{y \in \{0, 1\}^n}\frac{1}{2^{n/2}}\ket{y}$$
+
+\subsubsection{Step 2 - Apply $f(x)$ and measure}
+After creating the superposition described below, we pass the vector $\ket{\psi}$ into the black box provided to us. Now we measure the output qubits that we get from the black box which causes the input vector $\ket{\psi}$ to collapse to the following state
+$$ \ket{\psi} = \frac{1}{\sqrt{2}}\ket{z} + \frac{1}{\sqrt{2}}\ket{z \oplus s} \qquad \text{...where} \ z \in \{0, 1\}^n$$
+
+\subsubsection{Step 3 - Fourier sampling}
+Now we apply the Fourier sampling algorithm to the input which is in the above mentioned state. After applying $n$ Hadamard gates to the $n$ input bits the state of the vector $\ket{\psi}$ becomes
+\begin{align*}
+    \ket{\psi} &= \sum_{y \in \{0, 1\}^n}\left(\frac{(-1)^{y\cdot z} + (-1)^{y\cdot(z \oplus s)}}{2^{(n+1)/2}}\right)\ket{y} \\
+    &= \sum_{y \in \{0, 1\}^n}\left(\frac{(-1)^{y\cdot z}[1 + (-1)^{y\cdot s}]}{2^{(n+1)/2}}\right)\ket{y}s
+\end{align*}
+
+When we measure the input register $\ket{\psi}$ after Fourier sampling we will get a vector $\ket{y}$ such that $y\cdot s = 0\ \text{mod}\ 2$. This will happen because the probability all $y\text{s}$ which have an odd dot product will become 0.
+
+Now we have a way to find some vector $\ket{y}$ such that,
+$$y_n s_n \oplus y_{n-1} s_{n-1} \oplus \cdots \oplus y_1 s_1 = 0$$
+To find the secret bit string $s$ we have to get $n-1$ independent linear equations as above. It can be shown that the probability of finding these $n-1$ equations in $n$ tries is $\frac{1}{4}$. So if we perform the measurements $10n$ times the probability that we don't get independent equations is $0.05$ which is very less. After getting the equations they can be solved to find the secret string $s$ using Gaussian elimination, which takes $\mathcal{O}(n^3)$ time.
+
+\section{Implementation}
+\subsection{Implementing the Oracle}
+\indent There are many ways in which we can implement the oracle for Simon's Algorithm, here we look at one such implementation. Our basic goal is to create a 2-1 mapping from domain to range of $f(x)$. This can be realised by the following procedure -
+\begin{itemize}
+    \item Encode the secret string using the $X$ gate wherever there is a 1.
+    \item Copy the input register to output register using $CNOT$ gates.
+    \item We know that $s \neq 0^n$, so there exists at least one bit in $s$ which has the value 1. Let us call this bit as the \textbf{MSB} bit. We now apply $CCNOT$ gate on output bit which is controlled by the corresponding secret bit and the input \textbf{MSB} bit. This creates a 2-1 mapping.
+    \item Now we randomly flip some of the output qubits to further obfuscate the oracle. This step is optional and can be made even more complex so to make it harder to guess the secret string $s$.
+\end{itemize}
+\vspace{1pt}
+\begin{equation*}
+    \Qcircuit @C=1.0em @R=0.0em @!R {
+	 	\lstick{ {input}_{0} :  } & \qw \barrier[0em]{8} & \qw & \ctrl{3} & \qw & \qw \barrier[0em]{8} & \qw & \ctrl{6} & \ctrl{7} & \ctrl{8} \barrier[0em]{8} & \qw & \qw \barrier[0em]{8} & \qw & \qw & \qw\\
+	 	\lstick{ {input}_{1} :  } & \qw & \qw & \qw & \ctrl{3} & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {input}_{2} :  } & \qw & \qw & \qw & \qw & \ctrl{3} & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {output}_{0} :  } & \qw & \qw & \targ & \qw & \qw & \qw & \targ & \qw & \qw & \qw & \gate{X} & \qw & \qw & \qw\\
+	 	\lstick{ {output}_{1} :  } & \qw & \qw & \qw & \targ & \qw & \qw & \qw & \targ & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {output}_{2} :  } & \qw & \qw & \qw & \qw & \targ & \qw & \qw & \qw & \targ & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {secret}_{0} :  } & \gate{X} & \qw & \qw & \qw & \qw & \qw & \ctrl{-3} & \qw & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {secret}_{1} :  } & \gate{X} & \qw & \qw & \qw & \qw & \qw & \qw & \ctrl{-3} & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {secret}_{2} :  } & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \qw & \ctrl{-3} & \qw & \qw & \qw & \qw & \qw\\
+	 }
+\end{equation*}
+\vspace{1pt}
+\begin{center}
+\footnotesize{Circuit for Simon's oracle for $s=110$}
+\end{center}
+
+\subsubsection*{Qiskit implementation}
+Following is the code for the Oracle using IBM's Qiskit library. The complete source along with the test function can be found in the Github repository.
+\begin{tcolorbox}[
+    enhanced,
+    attach boxed title to top left={xshift=6mm,yshift=-3mm},
+    title=Oracle Code,
+    boxed title style={size=small,sharp corners},
+    sharp corners,
+]
+\begin{minted}{python}
+import itertools
+import random
+import time
+from typing import List, Tuple
+
+from qiskit import (Aer, ClassicalRegister,
+                    QuantumCircuit, QuantumRegister,
+                    execute)
+from qiskit.circuit import Gate
+
+random.seed(time.monotonic())
+
+
+def simons_oracle(size: int, secret_input: List[int] = None):
+    """ Returns a quantum gate which acts as
+        an Oracle for Simon's Algorithm
+    """
+    # Register holding the secret string
+    secret = QuantumRegister(size, "secret")
+
+    # Input and Output registers
+    input = QuantumRegister(size, "input")
+    output = QuantumRegister(size, "output")
+
+    # Initialize circuit
+    oracle = QuantumCircuit(input, output, secret)
+
+    # Generate random secret string
+    if not secret_input:
+        secret_input = [0 for i in range(size)]
+        while secret_input.count(0) == size:
+            secret_input = [
+                random.choice([0, 1]) for i in range(size)
+            ]
+
+    # Encode it in the quantum register
+    for i in range(size):
+        if secret_input[i]:
+            oracle.x(secret[i])
+
+\end{minted}
+\end{tcolorbox}
+\begin{tcolorbox}[
+    enhanced,
+    attach boxed title to top left={xshift=6mm,yshift=-3mm},
+    title=Oracle Code,
+    boxed title style={size=small,sharp corners},
+    sharp corners,
+]
+\begin{minted}{python}
+    # Copy input register to output register
+    for i in range(size):
+        oracle.cx(input[i], output[i])
+
+    # Find msb of secret string
+    msb = secret_input.index(1)
+
+    # Create 2-1 mapping
+    for i in range(size):
+        oracle.ccx(input[msb], secret[i], output[i])
+
+    # Randomly flip qubits for further obfuscation
+    for i in range(size):
+        if i % 3 == 0:
+            oracle.x(output[i])
+
+    return oracle.to_gate(label="oracle"), secret_input
+\end{minted}
+\end{tcolorbox}
+\subsection{Implementing the algorithm}
+The implementation of actual Simon's algorithm is pretty straightforward. After we get the set of equations we need, we use Gaussian elimination to solve them and find the secret string.
+\vspace{1pt}
+\begin{equation*}
+    \Qcircuit @C=1.0em @R=0.0em @!R {
+	 	\lstick{ {input}_{0} :  } & \gate{H} & \multigate{8}{Oracle} & \gate{H} & \meter & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {input}_{1} :  } & \gate{H} & \ghost{Oracle} & \gate{H} & \qw & \meter & \qw & \qw & \qw\\
+	 	\lstick{ {input}_{2} :  } & \gate{H} & \ghost{Oracle} & \gate{H} & \qw & \qw & \meter & \qw & \qw\\
+	 	\lstick{ {output}_{0} :  } & \qw & \ghost{Oracle} & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {output}_{1} :  } & \qw & \ghost{Oracle} & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {output}_{2} :  } & \qw & \ghost{Oracle} & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {secret}_{0} :  } & \qw & \ghost{Oracle} & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {secret}_{1} :  } & \qw & \ghost{Oracle} & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{ {secret}_{2} :  } & \qw & \ghost{Oracle} & \qw & \qw & \qw & \qw & \qw & \qw\\
+	 	\lstick{c0:} & {/_{_{3}}} \cw & \cw & \cw & \dstick{0} \cw \cwx[-9] & \dstick{1} \cw \cwx[-8] & \dstick{2} \cw \cwx[-7] & \cw & \cw\\
+	 }
+\end{equation*}
+\vspace{1pt}
+\begin{center}
+\footnotesize{Simon's Algorithm circuit for $n=3$}
+\end{center}
+\subsubsection*{Qiskit implementation}
+Following is the code for the the actual algorithm using IBM's Qiskit library. The complete source can be found in the Github repository.
+\begin{tcolorbox}[
+    enhanced,
+    attach boxed title to top left={xshift=6mm,yshift=-3mm},
+    title=Simon's Algorithm Code,
+    boxed title style={size=small,sharp corners},
+    sharp corners,
+]
+\begin{minted}{python}
+import sys
+
+from qiskit import (Aer, ClassicalRegister,
+                    QuantumCircuit, QuantumRegister,
+                    execute)
+from qiskit.visualization import plot_histogram
+
+from simons_oracle import simons_oracle
+
+
+# Get backend
+backend = Aer.get_backend('qasm_simulator')
+
+# Length of input
+n = None
+try:
+    n = int(sys.argv[1])
+except IndexError:
+    n = 4
+except ValueError:
+    print("Invalid size")
+    sys.exit(1)
+
+# Secret input (optional)
+secret_input = None
+try:
+    secret_input = sys.argv[2]
+    secret_input = [int(bit) for bit in secret_input]
+    if len(secret_input) != n:
+        print("Length of secret string and size "
+              "of input should be the same")
+        exit(1)
+except IndexError:
+    pass
+
+
+# Initialise input, output and secret registers
+input = QuantumRegister(n, "input")
+output = QuantumRegister(n, "output")
+secret = QuantumRegister(n, "secret")
+result = ClassicalRegister(n)
+\end{minted}
+\end{tcolorbox}
+
+\begin{tcolorbox}[
+    enhanced,
+    attach boxed title to top left={xshift=6mm,yshift=-3mm},
+    title=Simon's Algorithm Code,
+    boxed title style={size=small,sharp corners},
+    sharp corners,
+]
+\begin{minted}{python}
+(oracle, secret_input) = simons_oracle(n, secret_input)
+print(f"Secret string - "
+      f"{''.join([str(bit) for bit in secret_input])}")
+
+# Initialize circuit
+circuit = QuantumCircuit(input, output, secret, result)
+
+# Actual circuit
+circuit.h(input)
+circuit.append(oracle, [*input, *output, *secret])
+circuit.h(input)
+
+# Perform measurement
+circuit.measure(input, result)
+
+print(circuit.draw())
+
+# Take the top results and create a matrix out
+# of it to solve the equations
+res = execute(circuit, backend).result().get_counts()
+res = sorted(res, key=lambda k: res[k])[:2**(n-1)]
+
+# Convert to proper integer matrix
+mat = [[int(bit) for bit in bit_string] for bit_string in res]
+for row in mat:
+    row.reverse()
+
+# Perform Gaussian Elimination
+x, y = len(mat), n
+cur_row, cur_col = 0, 0
+while cur_row < x and cur_col < y:
+    if mat[cur_row][cur_col] == 0:
+        non_zero_row = -1
+        for j in range(cur_row+1, x):
+            if mat[j][cur_col] == 1:
+                non_zero_row = j
+                break
+        if non_zero_row == -1:
+            cur_col += 1
+            continue
+        else:
+            (mat[cur_col], mat[non_zero_row]) =
+                (mat[non_zero_row], mat[cur_row])
+\end{minted}
+\end{tcolorbox}
+\begin{tcolorbox}[
+    enhanced,
+    attach boxed title to top left={xshift=6mm,yshift=-3mm},
+    title=Simon's Algorithm Code,
+    boxed title style={size=small,sharp corners},
+    sharp corners,
+]
+\begin{minted}{python}
+    for j in range(cur_row+1, x):
+        if mat[j][cur_col] == 1:
+            for k in range(y):
+                mat[j][k] = mat[j][k] ^ mat[cur_row][k]
+
+    cur_row += 1
+
+mat = list(filter(lambda row: row.count(0) < y, mat))
+
+# Solve the reduced matrix
+sol = [-1 for i in range(n)]
+for i in range(n-1):
+    if not mat[i][i]:
+        sol[i] = 1
+        for j in range(i+1, n):
+            sol[j] = 0
+        break
+
+if sol.count(-1) == n:
+    sol[-1] = 1
+
+start = sol.index(1)-1
+for i in range(start, -1, -1):
+    cnt = 0
+    for j in range(n):
+        if sol[j] == 1 and mat[i][j] == 1:
+            cnt += 1
+    sol[i] = cnt % 2
+
+print(f'Calculated Secret String: '
+      f'{"".join([str(bit) for bit in sol])}')
+\end{minted}
+\end{tcolorbox}
+\section{Conclusion}
+Hence we have devised an algorithm which can solve a problem in polynomial time ($\mathcal{O}(n^3)$) with the help of quantum computers for which the best known solution is exponential time ($\mathcal{O}(2^n)$) using classical computer. This disproves the \textbf{Church-Turing Hypothesis} and shows the potential power of quantum computers.
+\end{document}.
